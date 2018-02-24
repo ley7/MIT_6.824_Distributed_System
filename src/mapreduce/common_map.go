@@ -53,6 +53,41 @@ func doMap(
 	//
 	// Your code here (Part I).
 	//
+
+	contents,err := ioutil.ReadFile(inFile)
+	if err != nil{
+		log.Printf("Read file %s failed",inFile)
+		return
+	}
+
+	kvs := mapF(inFile,string)
+	var intermediateFile = make([]*os.File,nReduce)
+	var enc = make([]*json.Encoder,nReduce)
+
+	for i:=0;i<nReduce;i++{
+		f,err :=os.create(reducName(jobName,mapTaskNumber,i))	//return value File?
+		if err != nil{
+			log.Printf("Create file %s failed",reduceName(jobName,mapTaskNumber,i))
+		}
+		else{
+			intermediateFile[i] = f
+			enc[i] = json.NewEncoder(f)
+		}
+	}
+	for _, kv :=range kvs{
+		r := ihash(kv.Key) & nReduce
+		if enc[r] != nil{
+			err := enc[r].Encode(&kv)
+			if err != nil{
+				log.Printf("Write %v to file %s failed",kv,reduceName(jobName,mapTaskNumber,r))
+			}
+		}
+	}
+	for i :=0;i<nReduce;i++{
+		if intermediateFile[i] != nil{
+			intermediateFile[i].close()
+		}
+	}
 }
 
 func ihash(s string) int {
