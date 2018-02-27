@@ -44,4 +44,41 @@ func doReduce(
 	//
 	// Your code here (Part I).
 	//
+	var keys []string
+	kvs := make(map[string][]string)
+
+	for i := 0;i < nMap;i++{
+		fileName := reduceName(jobName,i,reduceTask)
+		intermediateFile,err := os.Open(fileName)
+		if err != nil{
+			log.Printf("open intermediateFile file %s failed",fn)
+			continue
+		}
+
+		var kv KeyValue
+		dec := json.NewDecoder(intermediateFile)
+		err = dec.Decode(&kv)
+		for err == nil{
+			if _,ok := kvs[kv];!ok{
+				keys = append(keys,kv.Key)
+			}
+			kvs[kv.Key] = append(kvs[kv.key],kv.Value)
+			err = dec.Decode(&kv)
+		}
+		
+	}
+	sort.Strings(keys)
+	out, err := os.Create(outFile)
+	if err != nil{
+		log.Printf("create output file %s failed", outFile)
+		return
+	}
+	enc := json.NewEncoder(out)
+	for _,key := range keys{
+		err = enc.Encode(KeyValue{key,reduceF(key,kvs[key])})  //reduceF() returns the reduced value for that key
+		if err != nil{
+			log.Printf("write [key: %s] to file %s failed", key, outFile)
+		}
+	}
+	out.Close()
 }
